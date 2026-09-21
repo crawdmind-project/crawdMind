@@ -1,8 +1,12 @@
 import express from "express";
 import cors from "cors";
-import { authenticateToken } from "./middleware/auth.js";
+import dotenv from "dotenv";
+import { authenticateToken} from "./middleware/auth.js";
 // import routes
 import authRoutes from "./routes/authRoute.js";
+import ideaRoutes from "./routes/ideaRoute.js"
+
+dotenv.config();
 
 // Initialize Express app
 const app = express();
@@ -15,6 +19,7 @@ app.use(express.json());
 
 //API routes
 app.use("/api/auth", authRoutes);
+app.use("/api/ideas", ideaRoutes);
 
 // Protected route example
 app.get("/api/protected", authenticateToken, (req, res) => {
