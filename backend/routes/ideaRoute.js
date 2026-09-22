@@ -16,12 +16,10 @@ router.post("/", authenticateToken, async (req, res) => {
   try {
     const { title, description } = req.body;
     if (!title || !description) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Title and description are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Title and description are required",
+      });
     }
 
     const newIdea = await createIdea(title, description, req.user.id);
@@ -40,8 +38,8 @@ router.get("/", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-//UPDATE -OWNER
 
+// 3. Update Idea (Owner)
 router.put("/:id", authenticateToken, async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -84,7 +82,7 @@ router.put("/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// 3. Update Idea Status (Admin & Moderator)
+// 4. Update Idea Status (Admin & Moderator)
 router.put(
   "/:id/status",
   authenticateToken,
@@ -104,8 +102,7 @@ router.put(
   },
 );
 
-
-// 4. Delete Idea
+// 5. Delete Idea
 router.delete("/:id", authenticateToken, async (req, res) => {
   try {
     const idea = await getIdeaById(req.params.id);

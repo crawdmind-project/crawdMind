@@ -50,13 +50,11 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({ success: true, token, data: newUser });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error registering user",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error registering user",
+      error: error.message,
+    });
   }
 });
 
@@ -89,13 +87,11 @@ router.post("/login", async (req, res) => {
 
     res.status(200).json({ success: true, token, data: userWithoutPassword });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error logging in",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error logging in",
+      error: error.message,
+    });
   }
 });
 
@@ -195,4 +191,5 @@ router.delete(
     }
   },
 );
+
 export default router;
