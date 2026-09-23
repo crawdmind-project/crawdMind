@@ -95,6 +95,21 @@ router.post("/login", async (req, res) => {
   }
 });
 
+//LOGOUT
+router.post("/logout", (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      message: "successfully logged out",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error logout",
+      error: error.message
+    });
+  }
+});
 // GET MY PROFILE
 router.get("/me", authenticateToken, async (req, res) => {
   res.json({ success: true, data: req.user });
