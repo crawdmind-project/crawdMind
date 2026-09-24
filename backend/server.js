@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { authenticateToken } from "./middleware/auth.js";
 import authRoutes from "./routes/authRoute.js";
 import ideaRoutes from "./routes/ideaRoute.js";
+import commentRoutes from "./routes/commentRoute.js";
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/ideas", ideaRoutes);
+app.use("/api/comments", commentRoutes); 
 
 app.get("/api/protected", authenticateToken, (req, res) => {
   res.json({

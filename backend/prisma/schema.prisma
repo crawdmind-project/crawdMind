@@ -19,17 +19,17 @@ enum IdeaStatus {
   DONE
 }
 
-
 model User {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   fullName  String
-  email     String    @unique
+  email     String   @unique
   password  String
-  role      Role      @default(MEMBER)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  ideas     Idea[]
+  ideas    Idea[]
+  comments Comment[]
 }
 
 model Idea {
@@ -40,6 +40,18 @@ model Idea {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  userId      String
-  author      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  author   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments Comment[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  ideaId    String
+  idea      Idea     @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
