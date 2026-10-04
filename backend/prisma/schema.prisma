@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "sqlite"
+  url = env("DATABASE_URL")
+}
+model User {
+  id String @id @default(cuid())
+  ideas Idea[]
+  votes Vote[]
+}
+model Idea {
+  id String @id @default(cuid())
+  title String
+  description String
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  votes Vote[]
+}
+model Vote {
+  id String @id @default(cuid())
+  value Int
+  userId String
+  ideaId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idea Idea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, ideaId])
+  @@index([ideaId])
+}

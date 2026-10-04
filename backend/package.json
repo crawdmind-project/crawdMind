@@ -7,10 +7,12 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test tests/*.test.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:generate": "prisma generate",
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "postinstall": "prisma skills sync || exit 0"
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
