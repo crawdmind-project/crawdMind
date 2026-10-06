@@ -18,6 +18,10 @@ enum IdeaStatus {
   UNDER_REVIEW
   DONE
 }
+enum VoteType {
+  UPVOTE
+  DOWNVOTE
+}
 
 model User {
   id        String   @id @default(uuid())
@@ -30,6 +34,7 @@ model User {
 
   ideas    Idea[]
   comments Comment[]
+  votes    Vote[]
 }
 
 model Idea {
@@ -37,12 +42,15 @@ model Idea {
   title       String
   description String
   status      IdeaStatus @default(PLANNED)
+  tags        String[]
+  
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   userId   String
   author   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments Comment[]
+  votes    Vote[]
 }
 
 model Comment {
@@ -54,4 +62,17 @@ model Comment {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Vote {
+ id        String   @id @default(uuid())
+  userId    String
+  ideaId    String
+  voteType  VoteType 
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idea Idea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, ideaId])
 }

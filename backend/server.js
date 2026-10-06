@@ -5,6 +5,7 @@ import { authenticateToken } from "./middleware/auth.js";
 import authRoutes from "./routes/authRoute.js";
 import ideaRoutes from "./routes/ideaRoute.js";
 import commentRoutes from "./routes/commentRoute.js";
+import voteRoutes from "./routes/voteRoute.js"
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/ideas", ideaRoutes);
 app.use("/api/comments", commentRoutes); 
+app.use("/api/votes", voteRoutes)
 
 app.get("/api/protected", authenticateToken, (req, res) => {
   res.json({

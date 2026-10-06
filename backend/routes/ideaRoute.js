@@ -2,6 +2,7 @@ import express from "express";
 import {
   createIdea,
   getAllIdeas,
+  getLeaderboardIdeas,
   getIdeaById,
   updateIdeaStatus,
   updateIdeaDetails,
@@ -14,7 +15,7 @@ const router = express.Router();
 // 1. Create Idea
 router.post("/", authenticateToken, async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, tags } = req.body;
     if (!title || !description) {
       return res.status(400).json({
         success: false,
@@ -22,13 +23,20 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    const newIdea = await createIdea(title, description, req.user.id);
+    const newIdea = await createIdea(title, description, req.user.id,tags);
     res.status(201).json({ success: true, data: newIdea });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
+router.get("/leaderboard", async (req, res) => {
+  try {
+    const leaderboard = await getLeaderboardIdeas();
+    res.json({ success: true, data: leaderboard });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 // 2. Get All Ideas
 router.get("/", async (req, res) => {
   try {
@@ -42,7 +50,7 @@ router.get("/", async (req, res) => {
 // 3. Update Idea (Owner)
 router.put("/:id", authenticateToken, async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, tags } = req.body;
 
     if (!title || !description) {
       return res.status(400).json({
@@ -70,6 +78,7 @@ router.put("/:id", authenticateToken, async (req, res) => {
       req.params.id,
       title,
       description,
+      tags,
     );
 
     res.json({
