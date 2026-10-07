@@ -27,11 +27,18 @@ Default role: `MEMBER`.
 
 ## Ideas
 
-- `POST /api/ideas` — `title`, `description` — Authenticated (`status` defaults to `PLANNED`) 
+- `POST /api/ideas` — `title`, `description`, `tags` — Authenticated (`status` defaults to `PLANNED`) 
 - `GET /api/ideas` — Public
-- `PUT /api/ideas/:id` — `title`, `description` — Owner 
+- `GET /api/ideas/leaderboard `— Public (Gets top 10 ideas ordered by highest vote count)
+- `PUT /api/ideas/:id` — `title`, `description`,`tags` — Owner 
 - `PUT /api/ideas/:id/status` — `status` (`PLANNED` \| `UNDER_REVIEW` \| `DONE`) — Admin / Moderator 
 - `DELETE /api/ideas/:id` — Owner / Admin / Moderator
+
+## Votes
+
+- `POST /api/votes/:ideaId` — `voteType` ("UPVOTE" | "DOWNVOTE") — Authenticated (Toggles upvote/downvote for an idea)
+- `GET /api/votes/:ideaId` — Public (Gets total vote breakdown and score for an idea)
+
 
 ## Comments
 
