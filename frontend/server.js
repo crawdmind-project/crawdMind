@@ -1,10 +1,15 @@
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 const port = Number(process.env.FRONTEND_PORT || 5173);
-const allowed = new Set(["login.html", "register.html", "styles.css", "auth-ui.js"]);
+const allowed = new Set(["login.html", "register.html", "account.html", "styles.css", "auth-ui.js", "api.js", "account.js"]);
 const types = { html: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8" };
 http.createServer(async (req, res) => {
   const pathname = new URL(req.url, "http://localhost").pathname;
+  if (pathname === "/config.js") {
+    res.writeHead(200, { "Content-Type": types.js, "Cache-Control": "no-store" });
+    res.end("window.CROWDMIND_API_BASE_URL = " + JSON.stringify(process.env.API_BASE_URL || "https://crawdmind.onrender.com") + ";");
+    return;
+  }
   if (pathname === "/" || pathname === "/login" || pathname === "/register") {
     res.writeHead(302, { Location: pathname === "/register" ? "/register.html" : "/login.html" });
     res.end();

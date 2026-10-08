@@ -1,66 +1,71 @@
-# CrowdMind authentication UI
+# CrowdMind login and registration frontend
 
-HTML, CSS, and vanilla JavaScript frontend matching the CrowdMind designs.
+This frontend connects to the existing teammate backend documented in
+../api-doc.md. No backend files are changed.
 
-Run from this folder:
-
-```bash
-npm start
-```
-
-Open http://localhost:5173/login.html or http://localhost:5173/register.html.
-No npm install is needed: the local preview server uses built-in Node modules.
-
-Includes responsive layouts, accessible field labels and error messages,
-password visibility toggles, email/password confirmation validation, navigation
-between pages, and informational dialogs. No backend requests are sent, no
-form details are stored, and no accounts or login sessions are created.
-Remember me is a UI control only until authentication is integrated.
-
-The teammate's authentication backend can be connected in auth-ui.js later.
-Never store passwords in browser storage.
-
-## Files
-
-| File | Purpose |
-| --- | --- |
-| login.html | Sign-in form with email, password, and Remember me |
-| register.html | Registration form with name, email, password, and confirmation |
-| styles.css | Shared CrowdMind styling and responsive layout |
-| auth-ui.js | Form validation, password visibility, and informational dialogs |
-| server.js | Local frontend preview server using Node's built-in modules |
-| package.json | npm start and npm run dev commands |
-
-## Getting started from the repository root
+## Run
 
 ```bash
 cd frontend
 npm start
 ```
 
-Keep the terminal open while viewing the pages. If port 5173 is already in use,
-stop the previous frontend server or choose another FRONTEND_PORT.
-The frontend preview server is separate from the backend server.
+Open http://localhost:5173/login.html or /register.html.
+Node's built-in modules provide the local server; no npm install is required.
+Keep the terminal running. After editing server.js, restart the frontend server.
 
-## Manual checks
+## API connection
 
-1. Submit an empty login form and check that the field errors appear.
-2. Enter a valid email and a password; submission shows a preview message.
-3. Use Sign up to open the registration page.
-4. Check that short passwords, mismatched passwords, and an unchecked
-   agreement box prevent successful form validation.
-5. Use the eye buttons to show and hide the password fields.
-6. Check the Forgot password, Terms of Service, and Privacy Policy dialogs.
-7. Open the pages on narrow and wide screens.
+The default API base URL is https://crawdmind.onrender.com.
+For another backend, set API_BASE_URL before starting the frontend, for example:
 
-## Backend integration
+```powershell
+$env:API_BASE_URL = "http://localhost:5000"
+npm start
+```
 
-This change contains frontend files only and does not change the teammate's
-backend. The UI currently does not call the registration or login API.
-Submitting a valid form must continue to show the preview message until the
-teammate's API is connected.
+The local server exposes this public base URL through /config.js. Do not put
+secrets or database connection strings in this configuration.
+A static host can provide the equivalent config.js or use api.js's default.
 
-Before connecting the API, agree on the request fields, response format,
-session handling, and error messages with the teammate. Replace the preview
-submission logic in auth-ui.js with those agreed API calls. Remember me,
-password recovery, and the policy documents are not implemented services.
+| Page/action | Backend request |
+| --- | --- |
+| Register | POST /api/auth/register with fullName, email, password |
+| Login | POST /api/auth/login with email, password |
+| Account | GET /api/auth/me with Authorization: Bearer <token> |
+| Sign out | POST /api/auth/logout; clears this browser's saved session |
+
+Registration/login consume the backend response { success, token, data }.
+After success, the account page loads the user's profile from the backend.
+The confirmation password and agreement checkbox are frontend-only fields.
+
+Sessions use sessionStorage by default, or localStorage when Remember me is
+checked. Passwords are not saved. The backend verifies permissions and token
+expiry; a 401 on the account page clears the local session and returns to login.
+Logout clears the browser's session even if the network request fails.
+The existing backend logout endpoint does not revoke already issued JWTs.
+
+## Files
+
+- login.html and register.html: forms and CrowdMind design.
+- auth-ui.js: validation, API submissions, loading/error states, password toggles.
+- api.js: shared requests and session storage.
+- account.html and account.js: verified profile and sign out.
+- styles.css: shared responsive styling.
+- server.js: local preview server and public API configuration.
+
+## Checks
+
+```bash
+npm test
+```
+
+Client tests cover the documented registration payload, session storage,
+Bearer authorization, API errors, and network failures.
+Manual verification: register a disposable account, view its profile, sign
+out, sign in again, and verify wrong-password/duplicate-email errors.
+
+The Render backend may take a moment to start. Requests have a 65-second
+timeout and duplicate submissions are disabled while a request is pending.
+Password recovery and final legal policy documents are not provided by the
+existing API and remain informational dialogs.

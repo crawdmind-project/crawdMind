@@ -2,6 +2,28 @@
   box-sizing:border-box
 }
 
+.form-message.is-error {
+  color: #b42332;
+  background: #fff1f2;
+}
+.submit:disabled {
+  cursor: wait;
+  opacity: .65;
+  transform: none;
+}
+.profile {
+  margin: 0;
+}
+.profile dt {
+  font-size: 12px;
+  color: #778194;
+  margin-top: 16px;
+}
+.profile dd {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+}
+
 :root {
   font-family:Inter,"Segoe UI",Arial,sans-serif;
   color:#172033;

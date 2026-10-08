@@ -1,5 +1,8 @@
+import { apiRequest, saveSession } from "./api.js";
 const form = document.querySelector("#auth-form");
 const mode = form.dataset.mode;
+let submitting = false;
+const status = document.getElementById("form-message");
 function error(id, message) {
   const input = document.getElementById(id);
   document.getElementById(id + "-error").textContent = message;
@@ -17,28 +20,52 @@ function validate(input) {
   error(input.id, message);
   return !message;
 }
-form.addEventListener("submit", event => {
+form.addEventListener("submit", async event => {
   event.preventDefault();
-  document.getElementById("form-message").textContent = "";
+  if (submitting) return;
+  status.textContent = "";
+  status.classList.remove("is-error");
   const inputs = [...form.querySelectorAll("input[required], #terms")];
   const results = inputs.map(validate);
   if (results.some(result => !result)) {
     inputs[results.indexOf(false)].focus();
     return;
   }
-  // UI only. No fetch, localStorage, account creation, or token handling.
-  const status = document.getElementById("form-message");
-  status.textContent = mode === "register"
-    ? "Your form looks good. This is a preview; no account has been created."
-    : "Your form looks good. This is a preview; you have not been signed in.";
-  status.focus();
+  const body = { email: form.elements.email.value.trim(), password: form.elements.password.value };
+  if (mode === "register") body.fullName = form.elements.name.value.trim();
+  const remember = mode === "login" && form.elements.remember.checked;
+  const submit = form.querySelector('[type="submit"]');
+  const label = submit.innerHTML;
+  submitting = true;
+  submit.disabled = true;
+  submit.textContent = mode === "register" ? "Creating account…" : "Signing in…";
+  form.setAttribute("aria-busy", "true");
+  status.textContent = "Connecting… The server may take a moment to start.";
+  try {
+    const result = await apiRequest("/api/auth/" + mode, { method: "POST", body });
+    saveSession(result.token, result.data, remember);
+    form.elements.password.value = "";
+    if (mode === "register") form.elements["confirm-password"].value = "";
+    window.location.assign("/account.html");
+  } catch (failure) {
+    status.classList.add("is-error");
+    status.textContent = failure.message;
+    if (failure.status === 409) error("email", "An account already exists with this email. Please sign in.");
+    if (failure.status === 401) error("password", "Check your email and password.");
+    status.focus();
+  } finally {
+    submitting = false;
+    submit.disabled = false;
+    submit.innerHTML = label;
+    form.removeAttribute("aria-busy");
+  }
 });
 form.querySelectorAll("input[required], #terms").forEach(input => {
   input.addEventListener("blur", () => {
     if (input.value || input.getAttribute("aria-invalid") === "true") validate(input);
   });
   input.addEventListener("input", () => {
-    document.getElementById("form-message").textContent = "";
+    if (!submitting) status.textContent = "";
     if (input.getAttribute("aria-invalid") === "true") validate(input);
     if (input.id === "password" && mode === "register") {
       const confirm = document.getElementById("confirm-password");
@@ -59,9 +86,9 @@ document.querySelectorAll(".reveal").forEach(button => {
   });
 });
 const info = {
-  recovery: ["Password recovery", "Password recovery is not available in this UI preview. You can return to sign in or create an account."],
-  terms: ["Terms of Service", "The final Terms of Service will be provided before registration opens. This preview does not create an account or record an agreement."],
-  privacy: ["Privacy Policy", "This UI preview does not send or save your form details. The final Privacy Policy will be provided before registration opens."]
+  recovery: ["Password recovery", "Password recovery is not available yet."],
+  terms: ["Terms of Service", "Final Terms of Service have not been provided for this learning project. This checkbox is a form control and does not record a legal agreement."],
+  privacy: ["Privacy Policy", "Your name, email, and password are sent to the CrowdMind API to create an account or sign in. Passwords are not stored in this browser. The final Privacy Policy has not yet been provided."]
 };
 const dialog = document.getElementById("info-dialog");
 document.querySelectorAll("[data-dialog]").forEach(button => {
@@ -75,3 +102,7 @@ document.querySelectorAll("[data-dialog]").forEach(button => {
 });
 document.getElementById("close-dialog").addEventListener("click", () => dialog.close());
 document.getElementById("dialog-done").addEventListener("click", () => dialog.close());
+if (new URLSearchParams(location.search).has("expired")) {
+  status.classList.add("is-error");
+  status.textContent = "Your session has expired. Please sign in again.";
+}
