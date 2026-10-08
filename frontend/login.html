@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f6f5ff"><title>Sign in · CrowdMind</title><link rel="stylesheet" href="/styles.css"><script src="/config.js"></script><script src="/auth-ui.js" type="module"></script></head>
+<body>
+<header class="site-header"><a class="wordmark" href="/login.html" aria-label="CrowdMind home"><span class="mini-logo">CM</span><span>CrowdMind</span></a><span class="header-note">Ideas grow together.</span></header>
+<main><section class="auth-card" aria-labelledby="page-title">
+<div class="card-heading"><a class="logo" href="/login.html" aria-label="CrowdMind">CM</a><h1 id="page-title">Welcome back</h1><p>Sign in to your CrowdMind account</p></div>
+<form id="auth-form" data-mode="login" novalidate>
+<div class="fields">
+
+<div class="field"><label for="email">Email address</label><div class="input-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 7 9 6 9-6"/></svg><input id="email" name="email" type="email" placeholder="Enter your email" autocomplete="email" required  aria-describedby="email-error"></div><p class="field-error" id="email-error"></p></div>
+<div class="field"><label for="password">Password</label><div class="input-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required minlength="8" aria-describedby="password-error"><button class="reveal" type="button" aria-label="Show password" aria-controls="password" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div><p class="field-error" id="password-error"></p></div>
+
+<div class="form-options"><label class="check-label"><input type="checkbox" id="remember" name="remember"><span>Remember me</span></label><button type="button" class="text-link" data-dialog="recovery">Forgot password?</button></div>
+</div>
+<div class="form-bottom"><button class="submit" type="submit">Sign In <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><p class="form-message" id="form-message" role="status" aria-live="polite" tabindex="-1"></p><p class="switch-page">Don’t have an account? <a href="/register.html">Sign up</a></p></div>
+</form>
+</section></main>
+<footer class="site-footer"><span>© 2026 CrowdMind</span><span>Built for brighter ideas.</span></footer>
+<dialog id="info-dialog" aria-labelledby="dialog-title"><div class="dialog-heading"><h2 id="dialog-title"></h2><button type="button" id="close-dialog" aria-label="Close dialog">×</button></div><p id="dialog-copy"></p><button type="button" class="submit dialog-done" id="dialog-done">Got it</button></dialog>
+</body></html>
