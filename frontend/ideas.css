@@ -60,3 +60,12 @@ select:focus-visible, textarea:focus-visible { outline: 3px solid #bca0ec; outli
 .comment-delete:hover { text-decoration: underline; }
 .comments-empty { text-align: center; padding: 20px; background: #faf9fe; border-radius: 10px; }
 #comment-form { border-top: 1px solid #ececf4; padding-top: 20px; }#comment-form .submit { margin-top: 16px; }
+.workflow-path { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 26px 0; color: #8650c9; }
+.workflow-path span:not([aria-hidden]) { padding: 14px 18px; background: #f0e9fc; border-radius: 10px; font-size: 14px; }
+.moderation-list { margin-top: 24px; }
+.moderation-card { align-items: center; }
+.status-controls { display: grid; gap: 10px; min-width: 180px; max-width: 240px; }
+.status-controls label { font-size: 12px; color: #747d8d; overflow-wrap: anywhere; }
+.status-controls .submit { min-height: 40px; font-size: 13px; }
+#moderation-access { line-height: 1.8; color: #737d8d; }
+@media(max-width:700px) { .moderation-card { flex-direction: column; align-items: stretch; }.status-controls { max-width: none; }.ideas-header nav { gap: 18px; flex-wrap: wrap; } }

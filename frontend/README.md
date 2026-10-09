@@ -93,7 +93,7 @@ are highlighted only after a confirmed vote during this page visit. Totals
 always come from the backend. Failed counts do not hide the idea list.
 Search, status filtering and score/date sorting happen in the browser.
 New ideas use the backend default status (currently PLANNED).
-Editing, leaderboard and moderation pages are future frontend work.
+Editing and leaderboard pages are future frontend work.
 
 Manual check: sign in, create an idea with comma-separated tags, upvote it,
 change to downvote, click downvote again to remove, then refresh. Check search,
@@ -117,8 +117,38 @@ using textContent. Pending submissions disable repeat actions; failed posting
 keeps the draft. Refresh comments reloads the discussion, and failed reads
 show a retryable error. Closing/reopening ignores outdated read responses.
 The frontend currently offers delete only to the author. The backend separately
-supports staff deletion; moderation controls will be added in a later page.
+supports staff deletion; staff comment deletion controls remain future work.
 
 Manual check: open a discussion while signed out (read-only), sign in, post a
 comment, refresh to verify persistence, then delete it. A different member's
 comment must have no Delete my comment control.
+
+## Moderation and status workflow
+
+Open /moderation.html using the navigation on Ideas. The page verifies the
+current role with GET /api/auth/me. Only MODERATOR and ADMIN can see its
+workspace. Members and signed-out visitors see an access explanation.
+No accounts are promoted and no backend permissions are changed.
+
+- moderation.html: page, workflow guide, search and status filters.
+- moderation.js: verified-role gate, idea loading and status updates.
+- PUT /api/ideas/:id/status sends { status } with Bearer authentication.
+- Supported values: UNDER_REVIEW, PLANNED, DONE.
+
+The guide shows Under Review → Planned → Done. Staff can choose any supported
+status because the existing backend does not enforce a transition order.
+New ideas still receive the backend default PLANNED; frontend does not override
+that default. Saved values come from the API response. Failed updates retain
+the last confirmed status, show an error and allow retry. A 403 removes the
+workspace; a 401 clears the session. The backend authorizes every write.
+
+This page manages idea statuses. Reports and report resolution are not offered
+because the current API has no reports endpoints. Staff deletion and duplicate
+merging are not implemented in this frontend change.
+
+Verification uses an isolated local API fixture for staff/member roles,
+successful status transitions, refreshed persistence and failed update handling.
+A deployed Moderator/Admin login was not available, so staff writes have not
+been tested against the deployed backend. To verify there: sign in with a staff
+account, change a test idea from Under Review to Planned to Done, refresh, and
+confirm the matching badge on Ideas. A Member must not see status controls.
