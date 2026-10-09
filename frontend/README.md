@@ -93,8 +93,32 @@ are highlighted only after a confirmed vote during this page visit. Totals
 always come from the backend. Failed counts do not hide the idea list.
 Search, status filtering and score/date sorting happen in the browser.
 New ideas use the backend default status (currently PLANNED).
-Comments, editing, leaderboard and moderation pages are future frontend work.
+Editing, leaderboard and moderation pages are future frontend work.
 
 Manual check: sign in, create an idea with comma-separated tags, upvote it,
 change to downvote, click downvote again to remove, then refresh. Check search,
 status filters and mobile layout. An expired session returns to sign-in.
+
+## Comments
+
+Each idea has a Comments button that opens its discussion. Anyone can read
+comments; signed-in members can post and delete their own comments. The UI
+shows the author's name and creation time. Ownership comes from userId and the
+current session's user id; the backend makes the final permission decision.
+
+comments.js provides the dialog and calls these existing teammate endpoints:
+
+- GET /api/comments/idea/:ideaId: loads comments (data array, newest first).
+- POST /api/comments: sends content and ideaId with the session Bearer token.
+- DELETE /api/comments/:id: deletes the signed-in member's own comment.
+
+Whitespace-only submissions are rejected in the browser. API text is displayed
+using textContent. Pending submissions disable repeat actions; failed posting
+keeps the draft. Refresh comments reloads the discussion, and failed reads
+show a retryable error. Closing/reopening ignores outdated read responses.
+The frontend currently offers delete only to the author. The backend separately
+supports staff deletion; moderation controls will be added in a later page.
+
+Manual check: open a discussion while signed out (read-only), sign in, post a
+comment, refresh to verify persistence, then delete it. A different member's
+comment must have no Delete my comment control.

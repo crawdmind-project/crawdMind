@@ -1,4 +1,5 @@
 import { apiRequest, getSession, clearSession } from "./api.js";
+import { openComments } from "./comments.js";
 const list = document.getElementById("idea-list");
 const message = document.getElementById("ideas-message");
 const dialog = document.getElementById("idea-dialog");
@@ -63,6 +64,11 @@ function render() {
     const tags = element("div", "idea-tags");
     for (const tag of idea.tags || []) tags.append(element("span", "idea-tag", "#" + tag));
     content.append(tags, element("p", "vote-detail", idea.counts ? `${idea.counts.upvotes} upvotes · ${idea.counts.downvotes} downvotes` : "Vote totals unavailable. Refresh to try again."));
+    const comments = element("button", "comments-link", "Comments →");
+    comments.type = "button";
+    comments.setAttribute("aria-label", "Comments on " + idea.title);
+    comments.addEventListener("click", () => openComments(idea));
+    content.append(comments);
     card.append(controls, content);
     list.append(card);
   }
