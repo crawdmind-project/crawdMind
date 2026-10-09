@@ -11,6 +11,7 @@ function notify(text, error = false) {
   message.classList.toggle("is-error", error);
 }
 function deny(text) {
+  document.getElementById("staff-nav").hidden = true;
   workspace.hidden = true;
   list.replaceChildren();
   access.hidden = false;
@@ -31,18 +32,32 @@ function node(tag, className, text) {
   return el;
 }
 function render() {
+  document.getElementById("review-count").textContent = ideas.filter(idea => idea.status === "UNDER_REVIEW").length;
   const query = document.getElementById("moderation-search").value.trim().toLowerCase();
   const status = document.getElementById("moderation-filter").value;
   const filtered = ideas.filter(idea => (!status || idea.status === status) && [idea.title, idea.description, ...(idea.tags || [])].join(" ").toLowerCase().includes(query));
   list.replaceChildren();
   if (!filtered.length) list.append(node("p", "empty-state", "No ideas to show for this filter."));
   for (const idea of filtered) {
-    const card = node("article", "idea-card moderation-card");
-    const content = node("div", "idea-content");
-    content.append(node("h2", "", idea.title));
-    const meta = node("div", "idea-meta");
-    meta.append(node("span", "", idea.author?.fullName || "Community member"), node("span", "status-badge " + idea.status, statuses[idea.status] || idea.status));
-    content.append(meta, node("p", "idea-description", idea.description));
+    const card = node("article", "idea-card queue-card");
+    const header = node("div", "queue-card-header");
+    const heading = node("div", "queue-card-heading");
+    const icon = node("span", "queue-icon");
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M10 21h4"/></svg>';
+    icon.setAttribute("aria-hidden", "true");
+    const title = node("div", "");
+    const date = new Date(idea.createdAt);
+    title.append(node("h2", "", idea.status === "UNDER_REVIEW" ? "Idea awaiting review" : "Idea progress"), node("p", "", "Submitted by " + (idea.author?.fullName || "Community member") + (Number.isNaN(date.getTime()) ? "" : " · " + date.toLocaleDateString())));
+    heading.append(icon, title);
+    header.append(heading, node("span", "status-badge " + idea.status, statuses[idea.status] || idea.status));
+    const content = node("div", "queue-card-body");
+    content.append(node("h3", "", "Submitted idea"));
+    const details = node("div", "queue-idea");
+    details.append(node("h4", "", idea.title), node("p", "idea-description", idea.description));
+    const tags = node("div", "idea-tags");
+    for (const tag of idea.tags || []) tags.append(node("span", "idea-tag", "#" + tag));
+    details.append(tags);
+    content.append(details);
     const controls = node("form", "status-controls");
     const id = "status-" + idea.id;
     const label = node("label", "", "Status for " + idea.title);
@@ -62,7 +77,7 @@ function render() {
     save.setAttribute("aria-label", "Save status for " + idea.title);
     controls.append(label, select, save);
     controls.addEventListener("submit", event => { event.preventDefault(); void update(idea, select.value); });
-    card.append(content, controls);
+    card.append(header, content, controls);
     list.append(card);
   }
 }
@@ -82,11 +97,16 @@ async function load() {
   try {
     // Verify the role with the backend; do not trust a role stored in this browser.
     const profile = (await apiRequest("/api/auth/me", { authenticated: true })).data;
+    document.getElementById("profile-name").textContent = profile.fullName;
+    document.getElementById("profile-role").textContent = { ADMIN: "Admin", MODERATOR: "Moderator", MEMBER: "Member" }[profile.role] || profile.role;
+    document.getElementById("profile-initials").textContent = profile.fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(name => name[0]).join("").toUpperCase();
+    document.getElementById("queue-profile").hidden = false;
+    document.getElementById("queue-account").hidden = true;
     if (!["MODERATOR", "ADMIN"].includes(profile?.role)) { deny("Moderation is available to Moderator and Admin accounts."); return; }
     const response = await apiRequest("/api/ideas");
     if (!Array.isArray(response.data)) throw new Error("The server returned an unexpected ideas list.");
     ideas = response.data;
-    document.getElementById("moderator-name").textContent = "Signed in as " + profile.fullName + " · " + profile.role;
+    document.getElementById("staff-nav").hidden = false;
     workspace.hidden = false;
     notify("");
   } catch (error) { failure(error); }
@@ -108,4 +128,24 @@ async function update(idea, status) {
 document.getElementById("moderation-refresh").addEventListener("click", load);
 document.getElementById("moderation-search").addEventListener("input", render);
 document.getElementById("moderation-filter").addEventListener("change", render);
+function switchTab(tab) {
+  for (const name of ["reports", "review"]) {
+    const button = document.getElementById(name + "-tab");
+    button.setAttribute("aria-selected", String(name === tab));
+    button.tabIndex = name === tab ? 0 : -1;
+    document.getElementById(name + "-panel").hidden = name !== tab;
+  }
+}
+for (const name of ["reports", "review"]) {
+  const button = document.getElementById(name + "-tab");
+  button.addEventListener("click", () => switchTab(name));
+  button.addEventListener("keydown", event => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const target = event.key === "Home" ? "reports" : event.key === "End" ? "review" : name === "reports" ? "review" : "reports";
+    switchTab(target);
+    document.getElementById(target + "-tab").focus();
+  });
+}
+document.getElementById("go-review").addEventListener("click", () => { switchTab("review"); document.getElementById("review-tab").focus(); });
 await load();

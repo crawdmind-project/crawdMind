@@ -69,3 +69,4 @@ select:focus-visible, textarea:focus-visible { outline: 3px solid #bca0ec; outli
 .status-controls .submit { min-height: 40px; font-size: 13px; }
 #moderation-access { line-height: 1.8; color: #737d8d; }
 @media(max-width:700px) { .moderation-card { flex-direction: column; align-items: stretch; }.status-controls { max-width: none; }.ideas-header nav { gap: 18px; flex-wrap: wrap; } }
+[hidden] { display: none !important; }

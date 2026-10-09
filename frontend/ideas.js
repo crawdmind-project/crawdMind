@@ -155,3 +155,4 @@ document.getElementById("search").addEventListener("input", render);
 for (const id of ["status-filter", "sort"]) document.getElementById(id).addEventListener("change", render);
 document.getElementById("refresh").addEventListener("click", loadIdeas);
 await loadIdeas();
+if (new URLSearchParams(location.search).has("new")) document.getElementById("new-idea").click();

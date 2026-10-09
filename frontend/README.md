@@ -152,3 +152,26 @@ A deployed Moderator/Admin login was not available, so staff writes have not
 been tested against the deployed backend. To verify there: sign in with a staff
 account, change a test idea from Under Review to Planned to Done, refresh, and
 confirm the matching badge on Ideas. A Member must not see status controls.
+
+## Reference-aligned Moderation Queue
+
+The moderation screen uses a queue header, verified user identity, Reports and
+Under Review tabs, nested idea cards, tags and status actions. Under Review
+opens by default and its count comes from the full real idea list. Updating an
+idea away from UNDER_REVIEW removes it from that filter; All statuses shows it
+again. Tabs support arrow keys, Home and End.
+
+Reports shows an honest unavailable state. The API has no reporting endpoints,
+so there are no fabricated reports, report totals, Take Action or Dismiss
+Report requests. Reports backend support must be supplied before those actions
+can be connected. The reference's leaderboard and notifications are omitted
+until their pages/flows are implemented. New Idea links to the existing form.
+
+staff-nav.js keeps the Ideas page's Moderation link hidden until the backend
+confirms ADMIN or MODERATOR. It does not trust a locally saved role. Failed
+verification, signed-out visitors and Members keep the link hidden. Direct
+access to /moderation.html is still protected by its existing role check.
+
+Checks now include three staff navigation tests, bringing the client suite to
+eight tests. The revised queue layout, tabs and status-count updates were also
+verified with the isolated local fixture, not a deployed staff account.
