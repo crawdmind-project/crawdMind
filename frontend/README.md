@@ -1,4 +1,4 @@
-# CrowdMind login and registration frontend
+# CrowdMind frontend
 
 This frontend connects to the existing teammate backend documented in
 ../api-doc.md. No backend files are changed.
@@ -36,7 +36,7 @@ A static host can provide the equivalent config.js or use api.js's default.
 | Sign out | POST /api/auth/logout; clears this browser's saved session |
 
 Registration/login consume the backend response { success, token, data }.
-After success, the account page loads the user's profile from the backend.
+After success, the Ideas page opens. My account loads the verified profile.
 The confirmation password and agreement checkbox are frontend-only fields.
 
 Sessions use sessionStorage by default, or localStorage when Remember me is
@@ -69,3 +69,32 @@ The Render backend may take a moment to start. Requests have a 65-second
 timeout and duplicate submissions are disabled while a request is pending.
 Password recovery and final legal policy documents are not provided by the
 existing API and remain informational dialogs.
+
+## Ideas page
+
+Open /ideas.html. Public visitors can browse ideas; creating an idea and voting
+require a signed-in account. Successful login/registration opens this page.
+
+- ideas.html: navigation, statistics, filters, cards, New Idea dialog.
+- ideas.css: responsive layout matching the CrowdMind design.
+- ideas.js: loads ideas, creates ideas, toggles votes and refreshes totals.
+
+| Action | Request |
+| --- | --- |
+| List ideas | GET /api/ideas |
+| Create idea | POST /api/ideas with title, description, tags (array) |
+| Vote/change/remove | POST /api/votes/:ideaId with voteType UPVOTE or DOWNVOTE |
+| Read score | GET /api/votes/:ideaId; data.upvotes, downvotes, totalScore |
+
+The existing API removes a vote when the same direction is submitted twice.
+The frontend disables each idea's vote buttons while a request is pending.
+The API does not return the current user's vote when loading ideas, so arrows
+are highlighted only after a confirmed vote during this page visit. Totals
+always come from the backend. Failed counts do not hide the idea list.
+Search, status filtering and score/date sorting happen in the browser.
+New ideas use the backend default status (currently PLANNED).
+Comments, editing, leaderboard and moderation pages are future frontend work.
+
+Manual check: sign in, create an idea with comma-separated tags, upvote it,
+change to downvote, click downvote again to remove, then refresh. Check search,
+status filters and mobile layout. An expired session returns to sign-in.

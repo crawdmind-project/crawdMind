@@ -46,7 +46,7 @@ form.addEventListener("submit", async event => {
     saveSession(result.token, result.data, remember);
     form.elements.password.value = "";
     if (mode === "register") form.elements["confirm-password"].value = "";
-    window.location.assign("/account.html");
+    window.location.assign("/ideas.html");
   } catch (failure) {
     status.classList.add("is-error");
     status.textContent = failure.message;
