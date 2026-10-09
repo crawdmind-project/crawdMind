@@ -1,7 +1,7 @@
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 const port = Number(process.env.FRONTEND_PORT || 5173);
-const allowed = new Set(["login.html", "register.html", "account.html", "styles.css", "auth-ui.js", "api.js", "account.js", "ideas.html", "ideas.js", "ideas.css", "comments.js", "moderation.html", "moderation.js", "moderation.css", "staff-nav.js"]);
+const allowed = new Set(["login.html", "register.html", "account.html", "styles.css", "auth-ui.js", "api.js", "account.js", "ideas.html", "ideas.js", "ideas.css", "comments.js", "moderation.html", "moderation.js", "moderation.css", "staff-nav.js", "leaderboard.html", "leaderboard.js", "leaderboard.css"]);
 const types = { html: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8" };
 http.createServer(async (req, res) => {
   const pathname = new URL(req.url, "http://localhost").pathname;

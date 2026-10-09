@@ -43,6 +43,7 @@ function render() {
   if (!filtered.length) list.append(element("p", "empty-state", ideas.length ? "No ideas match your filters." : "No ideas yet. Be the first to share one!"));
   for (const idea of filtered) {
     const card = element("article", "idea-card");
+    card.id = "idea-" + idea.id;
     const controls = element("div", "vote-controls");
     for (const type of ["UPVOTE", "DOWNVOTE"]) {
       const button = element("button", "", type === "UPVOTE" ? "↑" : "↓");
@@ -155,4 +156,14 @@ document.getElementById("search").addEventListener("input", render);
 for (const id of ["status-filter", "sort"]) document.getElementById(id).addEventListener("change", render);
 document.getElementById("refresh").addEventListener("click", loadIdeas);
 await loadIdeas();
+const linkedIdea = new URLSearchParams(location.search).get("idea");
+if (linkedIdea) {
+  const card = document.getElementById("idea-" + linkedIdea);
+  if (card) {
+    card.classList.add("idea-highlight");
+    card.tabIndex = -1;
+    card.focus({ preventScroll: true });
+    card.scrollIntoView({ block: "center" });
+  }
+}
 if (new URLSearchParams(location.search).has("new")) document.getElementById("new-idea").click();

@@ -70,3 +70,4 @@ select:focus-visible, textarea:focus-visible { outline: 3px solid #bca0ec; outli
 #moderation-access { line-height: 1.8; color: #737d8d; }
 @media(max-width:700px) { .moderation-card { flex-direction: column; align-items: stretch; }.status-controls { max-width: none; }.ideas-header nav { gap: 18px; flex-wrap: wrap; } }
 [hidden] { display: none !important; }
+.idea-card.idea-highlight { border-color: #b083ed; box-shadow: 0 0 0 3px #b083ed22; scroll-margin-top: 24px; }

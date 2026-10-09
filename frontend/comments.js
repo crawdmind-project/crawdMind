@@ -125,6 +125,7 @@ form.addEventListener("submit", async event => {
     comments.unshift(response.data);
     form.reset();
     notify("Your comment was posted.");
+    document.dispatchEvent(new CustomEvent("comments-changed"));
   } catch (error) { failure(error); }
   finally { setBusy(false); list.setAttribute("aria-busy", "false"); }
 });
@@ -137,6 +138,7 @@ async function removeComment(comment) {
     await apiRequest("/api/comments/" + encodeURIComponent(comment.id), { method: "DELETE", authenticated: true });
     comments = comments.filter(item => item.id !== comment.id);
     notify("Your comment was deleted.");
+    document.dispatchEvent(new CustomEvent("comments-changed"));
   } catch (error) { failure(error); }
   finally { setBusy(false); list.setAttribute("aria-busy", "false"); }
 }

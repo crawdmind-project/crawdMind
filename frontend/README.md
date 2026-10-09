@@ -175,3 +175,19 @@ access to /moderation.html is still protected by its existing role check.
 Checks now include three staff navigation tests, bringing the client suite to
 eight tests. The revised queue layout, tabs and status-count updates were also
 verified with the isolated local fixture, not a deployed staff account.
+
+## Leaderboard
+
+Open /leaderboard.html from Ideas or Moderation. GET /api/ideas/leaderboard
+provides at most 10 ideas, already ordered by total vote count. The frontend
+preserves that order and displays author, status, tags, _count.votes and
+_count.comments. Votes include UPVOTE and DOWNVOTE; this is not net score.
+Equal totals share a competition rank (1, 1, 3). The API does not define the
+ordering of ties or guarantee which tied ideas appear at the tenth position.
+
+leaderboard.html, leaderboard.css and leaderboard.js provide the page. Public
+visitors can read it. Comments uses the shared discussion dialog; successful
+posting/deletion refreshes leaderboard counts from the API. View idea opens
+and highlights that idea on Ideas, where signed-in users can vote. Refresh
+leaderboard reloads rankings. Empty and retryable error states are provided.
+The staff-only navigation uses the same verified-role checks as Ideas.
