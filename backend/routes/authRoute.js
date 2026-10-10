@@ -1,210 +1,44 @@
 import express from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma.js";
 import { updateUser, deleteUser } from "../services/userService.js";
-import { authenticateToken, authorizeRoles } from "../middleware/auth.js";
-
+import { authenticateToken as auth, authorizeRoles, signToken, publicUser } from "../middleware/auth.js";
+import { email, password, text, fail } from "../lib/errors.js";
+import { requestReset, resetPassword } from "../services/passwordService.js";
+import { rateLimit } from "../middleware/rateLimit.js";
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-
-// REGISTER
-router.post("/register", async (req, res) => {
-  try {
-    const { fullName, email, password } = req.body;
-
-    if (!fullName || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "fullName, email, and password are required",
-      });
-    }
-
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "User with this email already exists",
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    const newUser = await prisma.user.create({
-      data: { fullName, email, password: hashedPassword },
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-    });
-
-    const token = jwt.sign(
-      { id: newUser.id, email: newUser.email, role: newUser.role },
-      JWT_SECRET,
-      { expiresIn: "24h" },
-    );
-
-    res.status(201).json({ success: true, token, data: newUser });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error registering user",
-      error: error.message,
-    });
-  }
+router.post("/register", rateLimit(20), async (req, res) => {
+  const data = { fullName: text(req.body.fullName, "Full name", 100), email: email(req.body.email), password: await bcrypt.hash(password(req.body.password), 12) };
+  const user = await prisma.user.create({ data });
+  res.status(201).json({ success: true, token: signToken(user), data: Object.fromEntries(Object.keys(publicUser).map(key => [key, user[key]])) });
 });
-
-// LOGIN
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ success: false, message: "email and password are required" });
-    }
-
-    const user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid email or password" });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "24h" },
-    );
-
-    const { password: _password, ...userWithoutPassword } = user;
-
-    res.status(200).json({ success: true, token, data: userWithoutPassword });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error logging in",
-      error: error.message,
-    });
-  }
+router.post("/login", rateLimit(30), async (req, res) => {
+  const address = email(req.body.email);
+  if (typeof req.body.password !== "string") fail(400, "Password required");
+  const user = await prisma.user.findUnique({ where: { email: address } });
+  if (!user || !await bcrypt.compare(req.body.password, user.password)) fail(401, "Invalid email or password");
+  res.json({ success: true, token: signToken(user), data: Object.fromEntries(Object.keys(publicUser).map(key => [key, user[key]])) });
 });
-
-//LOGOUT
-router.post("/logout", (req, res) => {
-  try {
-    return res.status(200).json({
-      success: true,
-      message: "successfully logged out",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Error logout",
-      error: error.message
-    });
-  }
+router.post("/logout", async (req, res, next) => {
+  if (!req.headers.authorization) return res.json({ success: true, message: "Signed out" });
+  auth(req, res, async error => {
+    if (error) return next(error);
+    try { await prisma.user.update({ where: { id: req.user.id }, data: { tokenVersion: { increment: 1 } } }); res.json({ success: true, message: "Signed out from all sessions" }); }
+    catch (err) { next(err); }
+  });
 });
-// GET MY PROFILE
-router.get("/me", authenticateToken, async (req, res) => {
-  res.json({ success: true, data: req.user });
+router.post("/forgot-password", rateLimit(5), async (req, res) => {
+  await requestReset(req.body.email);
+  res.json({ success: true, message: "If an account exists, a reset email has been sent" });
 });
-
-// UPDATE MY PROFILE
-router.put("/me", authenticateToken, async (req, res) => {
-  try {
-    const updatedUser = await updateUser(req.user.id, req.body);
-    res.json({ success: true, data: updatedUser });
-  } catch (error) {
-    res
-      .status(error.statusCode || 400)
-      .json({ success: false, message: error.message });
-  }
+router.post("/reset-password", rateLimit(10), async (req, res) => {
+  await resetPassword(req.body.token, req.body.password);
+  res.json({ success: true, message: "Password updated. Please sign in again" });
 });
-
-// DELETE MY PROFILE
-router.delete("/me", authenticateToken, async (req, res) => {
-  try {
-    await deleteUser(req.user.id);
-    res.json({ success: true, message: "User deleted successfully" });
-  } catch (error) {
-    res
-      .status(error.statusCode || 400)
-      .json({ success: false, message: error.message });
-  }
-});
-
-// ADMIN: GET ALL USERS
-router.get(
-  "/admin/users",
-  authenticateToken,
-  authorizeRoles("ADMIN", "MODERATOR"),
-  async (req, res) => {
-    try {
-      const users = await prisma.user.findMany({
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
-      });
-      res.json({ success: true, data: users });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: "Error fetching users",
-        error: error.message,
-      });
-    }
-  },
-);
-
-// ADMIN: UPDATE ANY USER BY ID
-router.put(
-  "/admin/users/:id",
-  authenticateToken,
-  authorizeRoles("ADMIN"),
-  async (req, res) => {
-    try {
-      const updatedUser = await updateUser(req.params.id, req.body);
-      res.json({
-        success: true,
-        message: "User updated successfully by Admin",
-        data: updatedUser,
-      });
-    } catch (error) {
-      res
-        .status(error.statusCode || 400)
-        .json({ success: false, message: error.message });
-    }
-  },
-);
-
-// ADMIN: DELETE ANY USER BY ID
-router.delete(
-  "/admin/users/:id",
-  authenticateToken,
-  authorizeRoles("ADMIN"),
-  async (req, res) => {
-    try {
-      await deleteUser(req.params.id);
-      res.json({
-        success: true,
-        message: "User deleted successfully by Admin",
-      });
-    } catch (error) {
-      res
-        .status(error.statusCode || 400)
-        .json({ success: false, message: error.message });
-    }
-  },
-);
-
+router.get("/me", auth, (req, res) => res.json({ success: true, data: req.user }));
+router.put("/me", auth, async (req, res) => res.json({ success: true, data: await updateUser(req.user.id, req.body) }));
+router.delete("/me", auth, async (req, res) => { await deleteUser(req.user.id); res.json({ success: true, message: "Account deleted" }); });
+router.get("/admin/users", auth, authorizeRoles("ADMIN", "MODERATOR"), async (req, res) => res.json({ success: true, data: await prisma.user.findMany({ select: publicUser, orderBy: { createdAt: "desc" } }) }));
+router.put("/admin/users/:id", auth, authorizeRoles("ADMIN"), async (req, res) => res.json({ success: true, data: await updateUser(req.params.id, req.body, true) }));
+router.delete("/admin/users/:id", auth, authorizeRoles("ADMIN"), async (req, res) => { await deleteUser(req.params.id); res.json({ success: true, message: "User deleted" }); });
 export default router;

@@ -1,141 +1,34 @@
 import express from "express";
-import {
-  createIdea,
-  getAllIdeas,
-  getLeaderboardIdeas,
-  getIdeaById,
-  updateIdeaStatus,
-  updateIdeaDetails,
-  deleteIdea,
-} from "../services/ideaService.js";
-import { authenticateToken, authorizeRoles } from "../middleware/auth.js";
-
+import prisma from "../lib/prisma.js";
+import { createIdea, getAllIdeas, getLeaderboardIdeas, getIdeaById, updateIdeaStatus, updateIdeaDetails, deleteIdea } from "../services/ideaService.js";
+import { duplicates, mergeIdeas } from "../services/communityService.js";
+import { authenticateToken as auth, authorizeRoles } from "../middleware/auth.js";
+import { fail } from "../lib/errors.js";
 const router = express.Router();
-
-// 1. Create Idea
-router.post("/", authenticateToken, async (req, res) => {
-  try {
-    const { title, description, tags } = req.body;
-    if (!title || !description) {
-      return res.status(400).json({
-        success: false,
-        message: "Title and description are required",
-      });
-    }
-
-    const newIdea = await createIdea(title, description, req.user.id,tags);
-    res.status(201).json({ success: true, data: newIdea });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+router.post("/", auth, async (req, res) => res.status(201).json({ success: true, data: await createIdea(req.body.title, req.body.description, req.user.id, req.body.tags) }));
+router.get("/leaderboard", async (req, res) => res.json({ success: true, data: await getLeaderboardIdeas() }));
+router.get("/duplicates", async (req, res) => res.json({ success: true, data: await duplicates(req.query.title, req.query.description || "", req.query.excludeId) }));
+router.get("/", async (req, res) => res.json({ success: true, data: await getAllIdeas() }));
+router.get("/:id", async (req, res) => {
+  let idea = await prisma.idea.findUnique({ where: { id: req.params.id }, include: { author: { select: { id: true, fullName: true } } } });
+  if (!idea || idea.hidden) fail(404, "Idea not found");
+  const originalId = idea.id;
+  if (idea.mergedIntoId) { idea = await getIdeaById(idea.mergedIntoId); if (!idea) fail(404, "Idea not found"); }
+  res.json({ success: true, data: idea, ...(originalId !== idea.id ? { mergedFrom: originalId } : {}) });
 });
-router.get("/leaderboard", async (req, res) => {
-  try {
-    const leaderboard = await getLeaderboardIdeas();
-    res.json({ success: true, data: leaderboard });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+router.post("/:id/merge", auth, authorizeRoles("ADMIN", "MODERATOR"), async (req, res) => {
+  if (typeof req.body.targetId !== "string") fail(400, "Target idea required");
+  res.json({ success: true, data: await mergeIdeas(req.params.id, req.body.targetId) });
 });
-// 2. Get All Ideas
-router.get("/", async (req, res) => {
-  try {
-    const ideas = await getAllIdeas();
-    res.json({ success: true, data: ideas });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+router.put("/:id", auth, async (req, res) => {
+  const idea = await getIdeaById(req.params.id);
+  if (idea.userId !== req.user.id) fail(403, "You can only edit your own idea");
+  res.json({ success: true, data: await updateIdeaDetails(idea.id, req.body.title, req.body.description, req.body.tags) });
 });
-
-// 3. Update Idea (Owner)
-router.put("/:id", authenticateToken, async (req, res) => {
-  try {
-    const { title, description, tags } = req.body;
-
-    if (!title || !description) {
-      return res.status(400).json({
-        success: false,
-        message: "Title and description are required",
-      });
-    }
-
-    const idea = await getIdeaById(req.params.id);
-
-    if (!idea) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Idea not found" });
-    }
-
-    if (idea.userId !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: You can only update your own idea",
-      });
-    }
-
-    const updatedIdea = await updateIdeaDetails(
-      req.params.id,
-      title,
-      description,
-      tags,
-    );
-
-    res.json({
-      success: true,
-      message: "Idea updated successfully",
-      data: updatedIdea,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+router.put("/:id/status", auth, authorizeRoles("ADMIN", "MODERATOR"), async (req, res) => res.json({ success: true, data: await updateIdeaStatus(req.params.id, req.body.status) }));
+router.delete("/:id", auth, async (req, res) => {
+  const idea = await getIdeaById(req.params.id);
+  if (idea.userId !== req.user.id && !["ADMIN", "MODERATOR"].includes(req.user.role)) fail(403, "You cannot delete this idea");
+  await deleteIdea(idea.id); res.json({ success: true, message: "Idea deleted" });
 });
-
-// 4. Update Idea Status (Admin & Moderator)
-router.put(
-  "/:id/status",
-  authenticateToken,
-  authorizeRoles("ADMIN", "MODERATOR"),
-  async (req, res) => {
-    try {
-      const { status } = req.body;
-      const updatedIdea = await updateIdeaStatus(req.params.id, status);
-      res.json({
-        success: true,
-        message: "Status updated successfully",
-        data: updatedIdea,
-      });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  },
-);
-
-// 5. Delete Idea
-router.delete("/:id", authenticateToken, async (req, res) => {
-  try {
-    const idea = await getIdeaById(req.params.id);
-    if (!idea) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Idea not found" });
-    }
-
-    const isOwner = idea.userId === req.user.id;
-    const isStaff = req.user.role === "ADMIN" || req.user.role === "MODERATOR";
-
-    if (!isOwner && !isStaff) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: You don't have permission to delete this idea",
-      });
-    }
-
-    await deleteIdea(req.params.id);
-    res.json({ success: true, message: "Idea deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 export default router;

@@ -29,20 +29,25 @@ model User {
   email     String   @unique
   password  String
   role      Role     @default(MEMBER)
+  tokenVersion Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   ideas    Idea[]
   comments Comment[]
   votes    Vote[]
+  reports Report[]
+  notifications Notification[]
+  resetTokens PasswordReset[]
 }
 
 model Idea {
   id          String     @id @default(uuid())
   title       String
   description String
-  status      IdeaStatus @default(PLANNED)
+  status      IdeaStatus @default(UNDER_REVIEW)
   tags        String[]
+  hidden      Boolean @default(false)
   
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -51,6 +56,10 @@ model Idea {
   author   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments Comment[]
   votes    Vote[]
+  reports Report[]
+  mergedIntoId String?
+  mergedInto Idea? @relation("MergedIdeas", fields: [mergedIntoId], references: [id], onDelete: Cascade)
+  mergedIdeas Idea[] @relation("MergedIdeas")
 }
 
 model Comment {
@@ -75,4 +84,48 @@ model Vote {
   idea Idea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
 
   @@unique([userId, ideaId])
+}
+
+enum ReportStatus {
+  PENDING
+  DISMISSED
+  ACTIONED
+}
+
+model Report {
+  id String @id @default(uuid())
+  ideaId String
+  idea Idea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason String
+  description String
+  status ReportStatus @default(PENDING)
+  resolution String?
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  @@unique([userId, ideaId])
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message String
+  ideaId String?
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+model PasswordReset {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String @unique
+  expiresAt DateTime
+  usedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId])
 }

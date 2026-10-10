@@ -46,7 +46,7 @@ form.addEventListener("submit", async event => {
     saveSession(result.token, result.data, remember);
     form.elements.password.value = "";
     if (mode === "register") form.elements["confirm-password"].value = "";
-    window.location.assign("/account.html");
+    window.location.assign("/ideas.html");
   } catch (failure) {
     status.classList.add("is-error");
     status.textContent = failure.message;
@@ -94,6 +94,7 @@ const dialog = document.getElementById("info-dialog");
 document.querySelectorAll("[data-dialog]").forEach(button => {
   button.addEventListener("click", event => {
     event.preventDefault();
+    if (button.dataset.dialog === "recovery") { location.assign("/forgot-password.html"); return; }
     const [title, copy] = info[button.dataset.dialog];
     document.getElementById("dialog-title").textContent = title;
     document.getElementById("dialog-copy").textContent = copy;
