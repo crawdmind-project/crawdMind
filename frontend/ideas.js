@@ -1,5 +1,7 @@
+import "./app-header.js";
 import { apiRequest, getSession, clearSession } from "./api.js";
 import { openComments } from "./comments.js";
+import { attachIdeaActions } from "./idea-actions.js";
 const list = document.getElementById("idea-list");
 const message = document.getElementById("ideas-message");
 const dialog = document.getElementById("idea-dialog");
@@ -9,6 +11,7 @@ const statusNames = { UNDER_REVIEW: "Under Review", PLANNED: "Planned", DONE: "D
 let ideas = [];
 let loading = false;
 let creating = false;
+let reloadRequested = false;
 function showMessage(target, text, error = false) {
   target.textContent = text;
   target.classList.toggle("is-error", error);
@@ -26,6 +29,15 @@ function element(tag, className, text) {
   return node;
 }
 function updateCounts() {
+  const counts = new Map();
+  for (const idea of ideas) for (const tag of new Set(idea.tags || [])) counts.set(tag, (counts.get(tag) || 0) + 1);
+  const popular = document.getElementById("popular-tags");
+  popular.replaceChildren();
+  for (const [tag] of [...counts].sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+    const button = element("button", "idea-tag", "#" + tag); button.type = "button";
+    button.addEventListener("click", () => { document.getElementById("tag-filter").value = tag; render(); }); popular.append(button);
+  }
+  if (!counts.size) popular.append(element("p", "", "No tags yet."));
   document.getElementById("stat-total").textContent = ideas.length;
   for (const [id, status] of [["review", "UNDER_REVIEW"], ["planned", "PLANNED"], ["done", "DONE"]]) {
     document.getElementById("stat-" + id).textContent = ideas.filter(idea => idea.status === status).length;
@@ -34,11 +46,20 @@ function updateCounts() {
 function render() {
   const query = document.getElementById("search").value.trim().toLowerCase();
   const status = document.getElementById("status-filter").value;
-  const filtered = ideas.filter(idea => (!status || idea.status === status) &&
+  const tagQuery = document.getElementById("tag-filter").value.trim().replace(/^#/, "").toLowerCase();
+  const filtered = ideas.filter(idea => (!tagQuery || (idea.tags || []).some(tag => tag.toLowerCase().includes(tagQuery))) && (!status || idea.status === status) &&
     [idea.title, idea.description, ...(idea.tags || [])].join(" ").toLowerCase().includes(query));
-  filtered.sort(document.getElementById("sort").value === "votes"
-    ? (a, b) => (b.counts?.totalScore ?? -Infinity) - (a.counts?.totalScore ?? -Infinity)
-    : (a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const sort = document.getElementById("sort").value;
+  filtered.sort((a, b) => {
+    const metric = idea => sort === "votes" ? idea.counts?.totalScore : idea.commentCount;
+    if (sort !== "date") {
+      const left = metric(a), right = metric(b);
+      if (left === undefined && right !== undefined) return 1;
+      if (right === undefined && left !== undefined) return -1;
+      if (left !== right && left !== undefined && right !== undefined) return right - left;
+    }
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
   list.replaceChildren();
   if (!filtered.length) list.append(element("p", "empty-state", ideas.length ? "No ideas match your filters." : "No ideas yet. Be the first to share one!"));
   for (const idea of filtered) {
@@ -65,17 +86,18 @@ function render() {
     const tags = element("div", "idea-tags");
     for (const tag of idea.tags || []) tags.append(element("span", "idea-tag", "#" + tag));
     content.append(tags, element("p", "vote-detail", idea.counts ? `${idea.counts.upvotes} upvotes · ${idea.counts.downvotes} downvotes` : "Vote totals unavailable. Refresh to try again."));
-    const comments = element("button", "comments-link", "Comments →");
+    const comments = element("button", "comments-link", idea.commentCount === undefined ? "Comments →" : `${idea.commentCount} ${idea.commentCount === 1 ? "comment" : "comments"}`);
     comments.type = "button";
     comments.setAttribute("aria-label", "Comments on " + idea.title);
     comments.addEventListener("click", () => openComments(idea));
     content.append(comments);
     card.append(controls, content);
     list.append(card);
+    if (!loading && !idea.voting) void attachIdeaActions(idea, content);
   }
 }
 async function loadIdeas() {
-  if (loading || ideas.some(idea => idea.voting)) return;
+  if (loading || ideas.some(idea => idea.voting)) { reloadRequested = true; return; }
   loading = true;
   document.getElementById("refresh").disabled = true;
   document.getElementById("new-idea").disabled = true;
@@ -89,11 +111,12 @@ async function loadIdeas() {
     updateCounts();
     render();
     // A failed vote-count request must not hide the ideas that loaded successfully.
-    const results = await Promise.allSettled(ideas.map(async idea => {
-      idea.counts = (await apiRequest("/api/votes/" + encodeURIComponent(idea.id))).data;
-    }));
+    const results = await Promise.allSettled(ideas.flatMap(idea => [
+      apiRequest("/api/votes/" + encodeURIComponent(idea.id)).then(response => { idea.counts = response.data; }),
+      apiRequest("/api/comments/idea/" + encodeURIComponent(idea.id)).then(response => { if (!Array.isArray(response.data)) throw new Error("Invalid comments response"); idea.commentCount = response.data.length; })
+    ]));
     render();
-    showMessage(message, results.some(result => result.status === "rejected") ? "Ideas loaded, but some vote totals could not load. Try Refresh ideas." : "", results.some(result => result.status === "rejected"));
+    showMessage(message, results.some(result => result.status === "rejected") ? "Ideas loaded, but some vote or comment totals could not load. Try Refresh ideas." : "", results.some(result => result.status === "rejected"));
   } catch (error) { handleError(error); }
   finally {
     loading = false;
@@ -101,6 +124,7 @@ async function loadIdeas() {
     document.getElementById("new-idea").disabled = false;
     render();
     list.setAttribute("aria-busy", "false");
+    if (reloadRequested) { reloadRequested = false; void loadIdeas(); }
   }
 }
 async function vote(idea, type) {
@@ -118,7 +142,7 @@ async function vote(idea, type) {
   } catch (error) {
     if (saved) { idea.counts = null; showMessage(message, "Your vote was saved, but totals could not refresh. Click Refresh ideas.", true); }
     else handleError(error);
-  } finally { idea.voting = false; render(); }
+  } finally { idea.voting = false; render(); if (reloadRequested) { reloadRequested = false; void loadIdeas(); } }
 }
 document.getElementById("new-idea").addEventListener("click", () => {
   if (!getSession()) { window.location.assign("/login.html"); return; }
@@ -144,6 +168,7 @@ form.addEventListener("submit", async event => {
     dialog.close();
     document.getElementById("search").value = "";
     document.getElementById("status-filter").value = "";
+    document.getElementById("tag-filter").value = "";
     await loadIdeas();
   } catch (error) { handleError(error, createMessage); }
   finally {
@@ -153,8 +178,12 @@ form.addEventListener("submit", async event => {
   }
 });
 document.getElementById("search").addEventListener("input", render);
+document.getElementById("tag-filter").addEventListener("input", render);
 for (const id of ["status-filter", "sort"]) document.getElementById(id).addEventListener("change", render);
 document.getElementById("refresh").addEventListener("click", loadIdeas);
+document.addEventListener("ideas-changed", () => void loadIdeas());
+document.addEventListener("comments-changed", () => void loadIdeas());
+document.getElementById("search").value = new URLSearchParams(location.search).get("search") || "";
 await loadIdeas();
 const linkedIdea = new URLSearchParams(location.search).get("idea");
 if (linkedIdea) {

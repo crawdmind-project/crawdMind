@@ -1,3 +1,4 @@
+import "./app-header.js";
 import { apiRequest, getSession, clearSession } from "./api.js";
 const statuses = { UNDER_REVIEW: "Under Review", PLANNED: "Planned", DONE: "Done" };
 const list = document.getElementById("moderation-list");
@@ -149,3 +150,4 @@ for (const name of ["reports", "review"]) {
 }
 document.getElementById("go-review").addEventListener("click", () => { switchTab("review"); document.getElementById("review-tab").focus(); });
 await load();
+document.addEventListener("ideas-changed", () => void load());

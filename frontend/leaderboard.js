@@ -1,3 +1,4 @@
+import "./app-header.js";
 import { apiRequest } from "./api.js";
 import { openComments } from "./comments.js";
 const list = document.getElementById("leaderboard-list");
@@ -79,3 +80,4 @@ async function load() {
 refresh.addEventListener("click", load);
 document.addEventListener("comments-changed", () => void load());
 await load();
+document.addEventListener("ideas-changed", () => void load());

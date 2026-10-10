@@ -10,7 +10,7 @@ cd frontend
 npm start
 ```
 
-Open http://localhost:5173/login.html or /register.html.
+Open http://localhost:5173/ for Home, or /login.html and /register.html.
 Node's built-in modules provide the local server; no npm install is required.
 Keep the terminal running. After editing server.js, restart the frontend server.
 
@@ -93,7 +93,7 @@ are highlighted only after a confirmed vote during this page visit. Totals
 always come from the backend. Failed counts do not hide the idea list.
 Search, status filtering and score/date sorting happen in the browser.
 New ideas use the backend default status (currently PLANNED).
-Editing and leaderboard pages are future frontend work.
+Owners can edit their ideas. The Leaderboard page displays the API rankings.
 
 Manual check: sign in, create an idea with comma-separated tags, upvote it,
 change to downvote, click downvote again to remove, then refresh. Check search,
@@ -116,8 +116,8 @@ Whitespace-only submissions are rejected in the browser. API text is displayed
 using textContent. Pending submissions disable repeat actions; failed posting
 keeps the draft. Refresh comments reloads the discussion, and failed reads
 show a retryable error. Closing/reopening ignores outdated read responses.
-The frontend currently offers delete only to the author. The backend separately
-supports staff deletion; staff comment deletion controls remain future work.
+Comment owners and server-verified Moderators/Admins can delete comments.
+The backend authorizes every deletion.
 
 Manual check: open a discussion while signed out (read-only), sign in, post a
 comment, refresh to verify persistence, then delete it. A different member's
@@ -142,9 +142,9 @@ that default. Saved values come from the API response. Failed updates retain
 the last confirmed status, show an error and allow retry. A 403 removes the
 workspace; a 401 clears the session. The backend authorizes every write.
 
-This page manages idea statuses. Reports and report resolution are not offered
-because the current API has no reports endpoints. Staff deletion and duplicate
-merging are not implemented in this frontend change.
+This page manages idea statuses. Reports require backend endpoints.
+Owner/staff idea deletion is available on Ideas; duplicate merging requires
+backend support.
 
 Verification uses an isolated local API fixture for staff/member roles,
 successful status transitions, refreshed persistence and failed update handling.
@@ -164,10 +164,10 @@ again. Tabs support arrow keys, Home and End.
 Reports shows an honest unavailable state. The API has no reporting endpoints,
 so there are no fabricated reports, report totals, Take Action or Dismiss
 Report requests. Reports backend support must be supplied before those actions
-can be connected. The reference's leaderboard and notifications are omitted
-until their pages/flows are implemented. New Idea links to the existing form.
+can be connected. Leaderboard and an in-place New Idea form are available. Notifications
+require backend endpoints.
 
-staff-nav.js keeps the Ideas page's Moderation link hidden until the backend
+app-header.js keeps the shared Moderation link hidden until the backend
 confirms ADMIN or MODERATOR. It does not trust a locally saved role. Failed
 verification, signed-out visitors and Members keep the link hidden. Direct
 access to /moderation.html is still protected by its existing role check.
@@ -191,3 +191,25 @@ posting/deletion refreshes leaderboard counts from the API. View idea opens
 and highlights that idea on Ideas, where signed-in users can vote. Refresh
 leaderboard reloads rankings. Empty and retryable error states are provided.
 The staff-only navigation uses the same verified-role checks as Ideas.
+
+## Completed reference pages
+
+The / route now opens index.html, the landing page matching the supplied visual
+reference. home.css and home.js provide its layout, demo walkthrough, policy
+notices and statistics computed from real ideas. No fabricated active-user or
+satisfaction figures are shown. Auth page wordmarks return to Home.
+
+app-header.js creates the shared Ideas/Leaderboard/Moderation header. Identity
+and staff navigation are based on /api/auth/me. Sign out clears the session.
+new-idea.js opens the creation form in place on Leaderboard and Moderation.
+idea-actions.js provides owner edits (PUT /api/ideas/:id) and owner/staff
+confirmed deletion (DELETE /api/ideas/:id). Requests use the existing Bearer
+token; backend permissions remain authoritative. API content uses textContent.
+Ideas now reads each idea's comments for accurate counts/comment sorting and
+provides popular tag buttons and a separate tag filter. Successful mutations
+refresh the list; failed edits retain the draft.
+
+See PROGRESS.md for the complete page checklist, remaining API gaps and a
+simple teacher-demo sequence. Reports,
+notifications, password recovery and duplicate merge still require backend
+work and are not represented as completed features.

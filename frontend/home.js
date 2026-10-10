@@ -1,0 +1,8 @@
+import { apiRequest } from './api.js';
+const dialog=document.getElementById('home-dialog');
+const info={demo:['How CrowdMind works','1. Create an account and share an idea. 2. Vote and discuss with the community. 3. Moderators track progress from review to completion.'],privacy:['Privacy Policy','Final privacy policy documents have not been provided for this learning project. Sign-in and registration send your details to the CrowdMind service. Your password is not saved in this browser.'],terms:['Terms of Service','Final Terms of Service have not been provided for this learning project.'],contact:['Contact','Contact your CrowdMind project team for support.']};
+function show(key){document.getElementById('home-dialog-title').textContent=info[key][0];document.getElementById('home-dialog-copy').textContent=info[key][1];document.getElementById('demo-link').hidden=key!=='demo';dialog.showModal();}
+document.getElementById('watch-demo').addEventListener('click',()=>show('demo'));
+for(const button of document.querySelectorAll('[data-info]'))button.addEventListener('click',()=>show(button.dataset.info));
+document.getElementById('home-close').addEventListener('click',()=>dialog.close());
+try{const {data}=await apiRequest('/api/ideas');if(!Array.isArray(data))throw new Error('Unavailable');for(const[id,value]of Object.entries({total:data.length,authors:new Set(data.map(i=>i.author?.id||i.userId).filter(Boolean)).size,planned:data.filter(i=>i.status==='PLANNED').length,done:data.filter(i=>i.status==='DONE').length}))document.getElementById('home-'+id).textContent=value;}catch{document.getElementById('home-message').textContent='Community statistics are temporarily unavailable.';}

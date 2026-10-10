@@ -1,4 +1,7 @@
 import { apiRequest, getSession, clearSession } from "./api.js";
+import { profileReady } from "./app-header.js";
+let verifiedProfile;
+profileReady.then(profile => { verifiedProfile = profile; if (dialog.open) render(); });
 
 const dialog = document.createElement("dialog");
 dialog.id = "comments-dialog";
@@ -57,8 +60,8 @@ function render() {
     const date = new Date(comment.createdAt);
     header.append(node("strong", "", comment.user?.fullName || "Community member"), node("span", "", Number.isNaN(date.getTime()) ? "" : date.toLocaleString()));
     article.append(header, node("p", "comment-body", comment.content));
-    if (userId && comment.userId === userId) {
-      const button = node("button", "comment-delete", "Delete my comment");
+    if ((userId && comment.userId === userId) || ["ADMIN", "MODERATOR"].includes(verifiedProfile?.role)) {
+      const button = node("button", "comment-delete", comment.userId === userId ? "Delete my comment" : "Delete comment");
       button.type = "button";
       button.disabled = busy || reading;
       button.addEventListener("click", () => removeComment(comment));
