@@ -1,4 +1,5 @@
 import "./app-header.js";
+import { loadReports, mergeControls } from "./moderation-tools.js";
 import { apiRequest, getSession, clearSession } from "./api.js";
 const statuses = { UNDER_REVIEW: "Under Review", PLANNED: "Planned", DONE: "Done" };
 const list = document.getElementById("moderation-list");
@@ -69,6 +70,7 @@ function render() {
       const option = node("option", "", name);
       option.value = value;
       option.selected = idea.status === value;
+      const order = ["UNDER_REVIEW", "PLANNED", "DONE"]; option.disabled = value !== idea.status && order.indexOf(value) !== order.indexOf(idea.status) + 1;
       select.append(option);
     }
     const save = node("button", "submit", "Save status");
@@ -78,7 +80,7 @@ function render() {
     save.setAttribute("aria-label", "Save status for " + idea.title);
     controls.append(label, select, save);
     controls.addEventListener("submit", event => { event.preventDefault(); void update(idea, select.value); });
-    card.append(header, content, controls);
+    card.append(header, content, controls, mergeControls(idea, ideas, load));
     list.append(card);
   }
 }
@@ -109,6 +111,7 @@ async function load() {
     ideas = response.data;
     document.getElementById("staff-nav").hidden = false;
     workspace.hidden = false;
+    await loadReports();
     notify("");
   } catch (error) { failure(error); }
   finally { setBusy(false); }
@@ -130,6 +133,7 @@ document.getElementById("moderation-refresh").addEventListener("click", load);
 document.getElementById("moderation-search").addEventListener("input", render);
 document.getElementById("moderation-filter").addEventListener("change", render);
 function switchTab(tab) {
+  if (tab === "reports") void loadReports();
   for (const name of ["reports", "review"]) {
     const button = document.getElementById(name + "-tab");
     button.setAttribute("aria-selected", String(name === tab));
@@ -148,6 +152,6 @@ for (const name of ["reports", "review"]) {
     document.getElementById(target + "-tab").focus();
   });
 }
-document.getElementById("go-review").addEventListener("click", () => { switchTab("review"); document.getElementById("review-tab").focus(); });
+document.getElementById("report-filter").addEventListener("change", loadReports);
 await load();
 document.addEventListener("ideas-changed", () => void load());

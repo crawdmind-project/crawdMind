@@ -1,3 +1,4 @@
+import { checkDuplicates } from "./community-ui.js";
 import { apiRequest, getSession, clearSession } from "./api.js";
 const dialog = document.createElement("dialog"); dialog.id = "shared-idea-dialog";
 dialog.setAttribute("aria-labelledby", "shared-idea-title");
@@ -7,7 +8,7 @@ const form = dialog.querySelector("form"); let busy = false;
 export function openNewIdea() {
   if (!getSession()) { location.assign("/login.html"); return; }
   if (busy) return;
-  form.reset(); document.getElementById("shared-message").textContent = ""; dialog.showModal();
+  form.reset(); delete form.dataset.duplicateConfirmed; form.querySelector(".duplicate-results")?.replaceChildren(); document.getElementById("shared-message").textContent = ""; dialog.showModal();
 }
 for (const id of ["shared-close", "shared-cancel"]) document.getElementById(id).addEventListener("click", () => { if (!busy) dialog.close(); });
 dialog.addEventListener("cancel", event => { if (busy) event.preventDefault(); });
@@ -20,6 +21,7 @@ form.addEventListener("submit", async event => {
   busy = true; for (const el of form.elements) el.disabled = true; document.getElementById("shared-close").disabled = true;
   message.textContent = "Submitting your idea…";
   try {
+    if (!await checkDuplicates(form, title, description)) { message.textContent = "Review the similar ideas below, or submit again to create yours."; return; }
     await apiRequest("/api/ideas", { method: "POST", body, authenticated: true });
     dialog.close(); document.dispatchEvent(new CustomEvent("ideas-changed"));
   } catch (error) {

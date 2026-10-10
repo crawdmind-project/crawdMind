@@ -1,0 +1,32 @@
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { authenticateToken } from "./middleware/auth.js";
+import authRoutes from "./routes/authRoute.js";
+import ideaRoutes from "./routes/ideaRoute.js";
+import commentRoutes from "./routes/commentRoute.js";
+import voteRoutes from "./routes/voteRoute.js";
+import { reports, notifications } from "./routes/communityRoute.js";
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: "100kb" }));
+app.use((req, res, next) => {
+  req.body ??= {};
+  if (typeof req.body !== "object" || Array.isArray(req.body)) return res.status(400).json({ success: false, message: "JSON body must be an object" });
+  next();
+});
+app.use("/api/auth", authRoutes);
+app.use("/api/ideas", ideaRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/votes", voteRoutes);
+app.use("/api/reports", reports);
+app.use("/api/notifications", notifications);
+app.get("/api/protected", authenticateToken, (req, res) => res.json({ success: true, user: req.user }));
+app.use((req, res) => res.status(404).json({ success: false, message: "Route not found" }));
+app.use((err, req, res, next) => {
+  const code = err.statusCode || (err.code === "P2002" ? 409 : err.code === "P2025" ? 404 : err.type === "entity.parse.failed" ? 400 : err.type === "entity.too.large" ? 413 : 500);
+  const message = err.code === "P2002" ? "A record with these details already exists" : err.code === "P2025" ? "Record not found" : code >= 500 && !err.statusCode ? "Server error. Please try again" : err.message;
+  if (code === 500) console.error("API error:", err.code || err.name);
+  res.status(code).json({ success: false, message });
+});
+export default app;

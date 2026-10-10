@@ -1,3 +1,4 @@
+import { checkDuplicates } from "./community-ui.js";
 import "./app-header.js";
 import { apiRequest, getSession, clearSession } from "./api.js";
 import { openComments } from "./comments.js";
@@ -113,7 +114,8 @@ async function loadIdeas() {
     // A failed vote-count request must not hide the ideas that loaded successfully.
     const results = await Promise.allSettled(ideas.flatMap(idea => [
       apiRequest("/api/votes/" + encodeURIComponent(idea.id)).then(response => { idea.counts = response.data; }),
-      apiRequest("/api/comments/idea/" + encodeURIComponent(idea.id)).then(response => { if (!Array.isArray(response.data)) throw new Error("Invalid comments response"); idea.commentCount = response.data.length; })
+      ...(getSession() ? [apiRequest("/api/votes/" + encodeURIComponent(idea.id) + "/me", { authenticated: true }).then(response => { idea.currentVote = response.data; })] : []),
+      Promise.resolve().then(() => { idea.commentCount = idea._count?.comments; })
     ]));
     render();
     showMessage(message, results.some(result => result.status === "rejected") ? "Ideas loaded, but some vote or comment totals could not load. Try Refresh ideas." : "", results.some(result => result.status === "rejected"));
@@ -159,12 +161,14 @@ form.addEventListener("submit", async event => {
   if (!title || !description) { showMessage(createMessage, "Please enter a title and description.", true); return; }
   const tags = [...new Set(form.elements.tags.value.split(",").map(tag => tag.trim().replace(/^#/, "")).filter(Boolean))];
   creating = true;
+  for (const field of form.elements) field.disabled = true;
   form.setAttribute("aria-busy", "true");
   for (const id of ["submit-idea", "close-idea", "cancel-idea"]) document.getElementById(id).disabled = true;
   showMessage(createMessage, "Submitting your idea…");
   try {
+    if (!await checkDuplicates(form, title, description)) { showMessage(createMessage, "Review the similar ideas below, or submit again to create yours."); return; }
     await apiRequest("/api/ideas", { method: "POST", authenticated: true, body: { title, description, tags } });
-    form.reset();
+    form.reset(); delete form.dataset.duplicateConfirmed; form.querySelector(".duplicate-results")?.replaceChildren();
     dialog.close();
     document.getElementById("search").value = "";
     document.getElementById("status-filter").value = "";
@@ -173,6 +177,7 @@ form.addEventListener("submit", async event => {
   } catch (error) { handleError(error, createMessage); }
   finally {
     creating = false;
+    for (const field of form.elements) field.disabled = false;
     form.removeAttribute("aria-busy");
     for (const id of ["submit-idea", "close-idea", "cancel-idea"]) document.getElementById(id).disabled = false;
   }
@@ -185,7 +190,10 @@ document.addEventListener("ideas-changed", () => void loadIdeas());
 document.addEventListener("comments-changed", () => void loadIdeas());
 document.getElementById("search").value = new URLSearchParams(location.search).get("search") || "";
 await loadIdeas();
-const linkedIdea = new URLSearchParams(location.search).get("idea");
+let linkedIdea = new URLSearchParams(location.search).get("idea");
+if (linkedIdea && !ideas.some(idea => idea.id === linkedIdea)) {
+  try { const response = await apiRequest("/api/ideas/" + encodeURIComponent(linkedIdea)); linkedIdea = response.data.id; if (response.mergedFrom) showMessage(message, "This idea was merged. Showing the surviving idea."); } catch (error) { handleError(error); }
+}
 if (linkedIdea) {
   const card = document.getElementById("idea-" + linkedIdea);
   if (card) {

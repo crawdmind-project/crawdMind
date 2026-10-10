@@ -94,6 +94,7 @@ const dialog = document.getElementById("info-dialog");
 document.querySelectorAll("[data-dialog]").forEach(button => {
   button.addEventListener("click", event => {
     event.preventDefault();
+    if (button.dataset.dialog === "recovery") { location.assign("/forgot-password.html"); return; }
     const [title, copy] = info[button.dataset.dialog];
     document.getElementById("dialog-title").textContent = title;
     document.getElementById("dialog-copy").textContent = copy;
