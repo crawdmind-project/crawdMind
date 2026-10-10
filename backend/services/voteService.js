@@ -1,91 +1,26 @@
-
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
-
-// 1. POST /api/votes/:ideaId
-export const voteOnIdea = async (req, res) => {
-  try {
-    const { ideaId } = req.params;
-    const { voteType } = req.body; // "UPVOTE" OR "DOWNVOTE"
-    const userId = req.user.id; 
-
-    const ideaExists = await prisma.idea.findUnique({
-      where: { id: ideaId },
-    });
-
-    if (!ideaExists) {
-      return res.status(404).json({ message: "Idea not found" });
-    }
-
-    const existingVote = await prisma.vote.findUnique({
-      where: {
-        userId_ideaId: {
-          userId,
-          ideaId,
-        },
-      },
-    });
-
-    if (existingVote) {
-      if (existingVote.voteType === voteType) {
-        await prisma.vote.delete({
-          where: { id: existingVote.id },
-        });
-        return res.status(200).json({ message: "Vote removed successfully" });
-      }
-
-      const updatedVote = await prisma.vote.update({
-        where: { id: existingVote.id },
-        data: { voteType },
-      });
-      return res
-        .status(200)
-        .json({ message: "Vote updated", vote: updatedVote });
-    }
-
-    const newVote = await prisma.vote.create({
-      data: {
-        userId,
-        ideaId,
-        voteType,
-      },
-    });
-
-    return res
-      .status(201)
-      .json({ message: "Voted successfully", vote: newVote });
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
-  }
-};
-
-// 2. GET /api/votes/:ideaId
-export const getIdeaVotes = async (req, res) => {
-  try {
-    const { ideaId } = req.params;
-
-    const upvotes = await prisma.vote.count({
-      where: { ideaId, voteType: "UPVOTE" },
-    });
-
-    const downvotes = await prisma.vote.count({
-      where: { ideaId, voteType: "DOWNVOTE" },
-    });
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        ideaId,
-        upvotes,
-        downvotes,
-        totalScore: upvotes - downvotes,
-      },
-    });
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
-  }
-};
+import prisma from "../lib/prisma.js";
+import { fail, transaction } from "../lib/errors.js";
+import { activeIdea } from "./communityService.js";
+export async function voteOnIdea(req, res) {
+  const { ideaId } = req.params, { voteType } = req.body, userId = req.user.id;
+  if (!["UPVOTE", "DOWNVOTE"].includes(voteType)) fail(400, "Vote must be UPVOTE or DOWNVOTE");
+  const vote = await transaction(prisma, async tx => {
+    await activeIdea(tx, ideaId);
+    const where = { userId_ideaId: { userId, ideaId } };
+    const existing = await tx.vote.findUnique({ where });
+    if (existing?.voteType === voteType) { await tx.vote.delete({ where }); return null; }
+    return tx.vote.upsert({ where, create: { userId, ideaId, voteType }, update: { voteType } });
+  });
+  res.json({ success: true, message: vote ? "Vote saved" : "Vote removed", vote });
+}
+export async function getIdeaVotes(req, res) {
+  await activeIdea(prisma, req.params.ideaId);
+  const groups = await prisma.vote.groupBy({ by: ["voteType"], where: { ideaId: req.params.ideaId }, _count: true });
+  const upvotes = groups.find(g => g.voteType === "UPVOTE")?._count || 0, downvotes = groups.find(g => g.voteType === "DOWNVOTE")?._count || 0;
+  res.json({ success: true, data: { ideaId: req.params.ideaId, upvotes, downvotes, totalScore: upvotes - downvotes } });
+}
+export async function getMyVote(req, res) {
+  await activeIdea(prisma, req.params.ideaId);
+  const vote = await prisma.vote.findUnique({ where: { userId_ideaId: { userId: req.user.id, ideaId: req.params.ideaId } } });
+  res.json({ success: true, data: vote?.voteType || null });
+}

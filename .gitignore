@@ -13,3 +13,6 @@ yarn-error.log*
 # OS specific
 .DS_Store
 Thumbs.db
+# Local learning database, mail and secrets
+.local-db/
+.local-mail/

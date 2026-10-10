@@ -1,5 +1,6 @@
 import { apiRequest, clearSession } from "./api.js";
 import { profileReady } from "./app-header.js";
+import { openReport } from "./community-ui.js";
 const dialog = document.createElement("dialog");
 dialog.id = "edit-idea-dialog";
 dialog.setAttribute("aria-labelledby", "edit-heading");
@@ -25,13 +26,13 @@ export async function attachIdeaActions(idea, container) {
   const profile = await profileReady;
   if (!profile || !container.isConnected) return;
   const owner = idea.userId === profile.id;
-  if (!owner && !["ADMIN", "MODERATOR"].includes(profile.role)) return;
+  const staff = ["ADMIN", "MODERATOR"].includes(profile.role);
   const menu = document.createElement("details"); menu.className = "idea-menu";
   const summary = document.createElement("summary"); summary.textContent = "⋯"; summary.setAttribute("aria-label", "Actions for " + idea.title);
   menu.append(summary);
-  for (const action of owner ? ["edit", "delete"] : ["delete"]) {
-    const button = document.createElement("button"); button.type = "button"; button.textContent = action === "edit" ? "Edit idea" : "Delete idea";
-    button.addEventListener("click", () => { menu.open = false; open(idea, action); }); menu.append(button);
+  for (const action of [...(owner ? ["edit", "delete"] : staff ? ["delete"] : []), "report"]) {
+    const button = document.createElement("button"); button.type = "button"; button.textContent = action === "report" ? "Report idea" : action === "edit" ? "Edit idea" : "Delete idea";
+    button.addEventListener("click", () => { menu.open = false; if (action === "report") openReport(idea); else open(idea, action); }); menu.append(button);
   }
   container.append(menu);
 }

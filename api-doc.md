@@ -1,66 +1,75 @@
-# CrawdMind API
+# CrowdMind API
 
-`https://crawdmind.onrender.com`
+Local API: http://localhost:5001. Hosted API: https://crawdmind.onrender.com (new features require deployment/migrations).
+Protected requests use Authorization: Bearer <jwt>. JSON bodies use Content-Type: application/json.
+Responses: { success, data?, message?, token? }. Errors: { success: false, message }.
 
-Protected: `Authorization: Bearer <jwt>` (from login/register, 24h). JSON: `Content-Type: application/json`.
+## Accounts
 
-## Roles & permissions
+- POST /api/auth/register — fullName, email, password; Public; always creates MEMBER.
+- POST /api/auth/login — email, password; Public.
+- POST /api/auth/logout — Public; with Bearer token invalidates all user's sessions.
+- GET /api/auth/me — Authenticated; verified safe profile.
+- PUT /api/auth/me — fullName?, email?, password?; Authenticated. Role/other fields rejected.
+- DELETE /api/auth/me — Authenticated.
+- GET /api/auth/admin/users — MODERATOR / ADMIN.
+- PUT /api/auth/admin/users/:id — fullName?, email?, password?, role?; ADMIN.
+- DELETE /api/auth/admin/users/:id — ADMIN.
+- POST /api/auth/forgot-password — email; Public, rate limited.
+- POST /api/auth/reset-password — token, password; Public, rate limited.
+- GET /api/protected — Authenticated.
 
-| Role | Can |
-| --- | --- |
-| Public | register, login, logout, list ideas, list comments |
-| `MEMBER` | own profile; create ideas/comments; edit own ideas; delete own ideas/comments |
-| `MODERATOR` | member access + list users, set idea status, delete any idea/comment |
-| `ADMIN` | moderator access + update/delete any user |
-
-Default role: `MEMBER`.
-
-## Auth
-
-- `POST /api/auth/register` — `fullName`, `email`, `password` — Public 
-- `POST /api/auth/login` — `email`, `password` — Public
-- `POST /api/auth/logout` — Public
-- `GET /api/auth/me` — Authenticated
-- `PUT /api/auth/me` — `fullName?`, `email?`, `password?` — Authenticated
-- `DELETE /api/auth/me` — Authenticated
-- `GET /api/protected` — Authenticated
+Names: 1–100 characters. Emails trimmed/lowercased. Passwords: >=8 characters and <=72 UTF-8 bytes. Never return hashes or tokenVersion.
+Password changes/reset revoke existing sessions. Last Admin deletion/demotion returns 409.
+Recovery gives the same response for known/unknown valid emails. Tokens are stored hashed, expire after 30 minutes and are single-use. Production needs SMTP; local mail files stay outside Git. Tokens are not returned through the API.
 
 ## Ideas
 
-- `POST /api/ideas` — `title`, `description`, `tags` — Authenticated (`status` defaults to `PLANNED`) 
-- `GET /api/ideas` — Public
-- `GET /api/ideas/leaderboard `— Public (Gets top 10 ideas ordered by highest vote count)
-- `PUT /api/ideas/:id` — `title`, `description`,`tags` — Owner 
-- `PUT /api/ideas/:id/status` — `status` (`PLANNED` \| `UNDER_REVIEW` \| `DONE`) — Admin / Moderator 
-- `DELETE /api/ideas/:id` — Owner / Admin / Moderator
+- GET /api/ideas — Public; active ideas, author and _count.comments.
+- GET /api/ideas/leaderboard — Public; top 10 by total votes including both directions.
+- GET /api/ideas/duplicates — title, description?, excludeId? query; Public; top 5 suggestions >=0.5 similarity.
+- GET /api/ideas/:id — Public; resolves merge aliases; mergedFrom identifies original ID.
+- POST /api/ideas — title, description, tags?; Authenticated; defaults UNDER_REVIEW.
+- PUT /api/ideas/:id — title, description, tags?; Owner.
+- PUT /api/ideas/:id/status — status; MODERATOR / ADMIN.
+- POST /api/ideas/:id/merge — targetId; MODERATOR / ADMIN.
+- DELETE /api/ideas/:id — Owner / MODERATOR / ADMIN.
 
-## Votes
+Workflow: UNDER_REVIEW → PLANNED → DONE. Same-state writes allowed; skipped/backwards transitions return 409.
+Title: 1–200, description: 1–5000, at most 15 nonempty tags <=50 characters.
+Similarity: title word Jaccard overlap, or 70% title +30% description overlap, whichever is larger. Suggestions do not automatically block distinct ideas.
+Merge is transactional: target title/description/status/author remain, tags combine, comments transfer. If a user voted on both, keep their target vote. Duplicate reporter collisions keep the target report. Source becomes an alias, previous aliases flatten, notification links transfer, both authors are notified. Hidden/merged ideas reject active writes. Deleting target deletes aliases.
 
-- `POST /api/votes/:ideaId` — `voteType` ("UPVOTE" | "DOWNVOTE") — Authenticated (Toggles upvote/downvote for an idea)
-- `GET /api/votes/:ideaId` — Public (Gets total vote breakdown and score for an idea)
+## Votes/comments
 
+- GET /api/votes/:ideaId — Public; data={ideaId,upvotes,downvotes,totalScore}.
+- GET /api/votes/:ideaId/me — Authenticated; data=UPVOTE,DOWNVOTE or null.
+- POST /api/votes/:ideaId — voteType: UPVOTE or DOWNVOTE; Authenticated; returns vote or null.
+- GET /api/comments/idea/:ideaId — Public.
+- POST /api/comments — content, ideaId; Authenticated.
+- DELETE /api/comments/:id — Owner / MODERATOR / ADMIN.
 
-## Comments
+Same direction removes vote; opposite changes it. Unique user/idea constraint and serializable retry preserve one vote. Comments: 1–2000 characters; another member's comment notifies idea author.
 
-- `POST /api/comments` — `content`, `ideaId` — Authenticated 
-- `GET /api/comments/idea/:ideaId` — Public
-- `DELETE /api/comments/:id` — Owner / Admin / Moderator
+## Reports
 
-## Admin
+- POST /api/reports — ideaId, reason, description; Authenticated.
+- GET /api/reports — status query PENDING(default), DISMISSED or ACTIONED; MODERATOR / ADMIN.
+- PUT /api/reports/:id/resolve — action: DISMISS or HIDE, resolution; MODERATOR / ADMIN.
 
-- `GET /api/auth/admin/users` — Admin / Moderator
-- `PUT /api/auth/admin/users/:id` — `fullName?`, `email?`, `password?`, `role?` — Admin
-- `DELETE /api/auth/admin/users/:id` — Admin
+Reasons: Spam, Abuse, Duplicate, Other. Description: 1–2000; resolution: 1–1000.
+One report per user/idea; repeats/resolving closed reports return 409.
+HIDE preserves data, hides content from public access, resolves its pending reports. DISMISS closes one report without hiding the idea. Staff receive new-report notifications; reporter/affected author receive resolution notifications.
 
-## Status codes
+## Notifications
 
-| Code | Meaning |
-| --- | --- |
-| 200 | OK |
-| 201 | Created |
-| 400 | Missing / invalid fields |
-| 401 | Unauthorized (no/bad/expired token) |
-| 403 | Forbidden (role or not owner) |
-| 404 | Not found |
-| 409 | Email already registered |
-| 500 | Server error |
+- GET /api/notifications — Authenticated; own latest 100 data entries and total unread.
+- PUT /api/notifications/:id/read — Recipient only.
+- PUT /api/notifications/read-all — Own notifications only.
+
+Records: id,message,ideaId?,readAt?,createdAt. No notification is emitted for every vote.
+
+## Errors
+
+400 invalid input;401 invalid/expired/revoked session;403 forbidden;404 missing/hidden record;409 duplicate/invalid workflow;413 oversized body;429 rate limit;503 missing mail/JWT configuration;500 unexpected server error.
+See backend/README.md for local usage/migrations/deployment.
