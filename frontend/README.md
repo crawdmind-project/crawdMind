@@ -1,20 +1,16 @@
-# CrowdMind frontend
+# React + Vite
 
-Start backend with npm run dev:local, then run npm run dev:local here.
-Open http://localhost:5174/ (API localhost:5001).
-npm start serves port5173 with API_BASE_URL or the original Render default.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Pages: Home, Login/Register, Account, Ideas, Leaderboard, Moderation, Users, Forgot/Reset Password.
-Account supports profile edits, password change and confirmed deletion.
-Ideas supports voting with restored selection, comments, tags/filter/sorting, owner edits, reports and confirmed deletion.
-New Idea checks similar ideas; submit again to deliberately proceed.
-Moderation supports real reports, Take Action (hide), Dismiss Report, workflow and confirmed merge.
-Users: Moderators view; Admins edit profiles/roles and confirm deletion.
-Notifications show private inbox/unread counts and mark one/all read.
+Currently, two official plugins are available:
 
-API text uses textContent. Backend authorizes every write. Error states preserve drafts.
-npm test runs eight existing API/session/navigation tests.
-See ../api-doc.md and ../backend/README.md for integration and deployment.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-New features require updated backend/migrations. Local reset mail is in backend/.local-mail; real delivery needs SMTP.
-Final Terms/Privacy documents require project input.
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

@@ -10,7 +10,7 @@ Responses: { success, data?, message?, token? }. Errors: { success: false, messa
 - POST /api/auth/login — email, password; Public.
 - POST /api/auth/logout — Public; with Bearer token invalidates all user's sessions.
 - GET /api/auth/me — Authenticated; verified safe profile.
-- PUT /api/auth/me — fullName?, email?, password?; Authenticated. Role/other fields rejected.
+- PUT /api/auth/me — fullName?, email?, password?; Authenticated. Role/other fields rejected. Changing a password here keeps existing sessions active; password-reset requests revoke existing sessions.
 - DELETE /api/auth/me — Authenticated.
 - GET /api/auth/admin/users — MODERATOR / ADMIN.
 - PUT /api/auth/admin/users/:id — fullName?, email?, password?, role?; ADMIN.
@@ -28,8 +28,10 @@ Recovery gives the same response for known/unknown valid emails. Tokens are stor
 - GET /api/ideas — Public; active ideas, author and _count.comments.
 - GET /api/ideas/leaderboard — Public; top 10 by total votes including both directions.
 - GET /api/ideas/duplicates — title, description?, excludeId? query; Public; top 5 suggestions >=0.5 similarity.
+- GET /api/ideas/favorites/me — Authenticated; current user's favorited active ideas.
 - GET /api/ideas/:id — Public; resolves merge aliases; mergedFrom identifies original ID.
 - POST /api/ideas — title, description, tags?; Authenticated; defaults UNDER_REVIEW.
+- POST /api/ideas/:id/favorite — Authorization: Bearer <jwt>; toggles the current user's favorite status; returns { success: true, data: { isFavorite: boolean }, message: "Favorite status updated" }.
 - PUT /api/ideas/:id — title, description, tags?; Owner.
 - PUT /api/ideas/:id/status — status; MODERATOR / ADMIN.
 - POST /api/ideas/:id/merge — targetId; MODERATOR / ADMIN.
